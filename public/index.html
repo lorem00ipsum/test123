@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Multi-utilisateurs</title>
+    <style>
+           body {
+                        font-family: Arial, sans-serif;
+                        margin: 0;
+                        padding: 0;
+                        background-image: url('jujutsu-kaisen-3840x2160-19746.jpg');
+                        background-size: cover;
+                        background-attachment: fixed;
+                        color: #f5f5f5;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: 100vh;
+                        animation: backgroundAnimation 30s ease-in-out infinite;
+                    }
+        #chat-box {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            overflow-y: auto;
+            background-color: #fff;
+        }
+        #message-input {
+            width: calc(100% - 90px);
+            padding: 10px;
+        }
+        #send-button {
+            padding: 10px;
+            cursor: pointer;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 5px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+        }
+        #nickname-section, #room-section {
+            text-align: center;
+            margin-top: 20px;
+        }
+        #create-room-code {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Chat Multi-utilisateurs</h1>
+    
+    <!-- Section de choix du pseudo -->
+    <div id="nickname-section">
+        <input type="text" id="nickname-input" placeholder="Choisissez votre pseudo" />
+        <button id="set-nickname-button">Définir le pseudo</button>
+        <p id="error-message" style="color: red; display: none;">Ce pseudo est déjà pris. Essayez un autre.</p>
+    </div>
+
+    <!-- Section pour choisir ou créer un salon -->
+    <div id="room-section" style="display: none;">
+        <button id="create-room-button">Créer un salon</button>
+        <input type="text" id="room-code-input" placeholder="Entrez un code de salon" />
+        <button id="join-room-button">Rejoindre un salon</button>
+    </div>
+
+    <!-- Chat et champ de saisie de message -->
+    <div id="chat-box" style="display: none;"></div>
+    <input type="text" id="message-input" placeholder="Écrivez un message..." style="display: none;" />
+    <button id="send-button" style="display: none;">Envoyer</button>
+    <div id="create-room-code" style="display: none;">Code du salon: <span id="room-code"></span></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        const nicknameInput = document.getElementById('nickname-input');
+        const setNicknameButton = document.getElementById('set-nickname-button');
+        const errorMessage = document.getElementById('error-message');
+        const chatBox = document.getElementById('chat-box');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const nicknameSection = document.getElementById('nickname-section');
+        const roomSection = document.getElementById('room-section');
+        const createRoomButton = document.getElementById('create-room-button');
+        const roomCodeInput = document.getElementById('room-code-input');
+        const joinRoomButton = document.getElementById('join-room-button');
+        const createRoomCode = document.getElementById('create-room-code');
+        const roomCodeDisplay = document.getElementById('room-code');
+        
+        let userNickname = '';
+        let currentRoomCode = '';
+
+        // Fonction pour afficher les messages dans le chat
+        function displayMessage(message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+            messageDiv.textContent = message;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // Gérer l'événement de clic pour définir un pseudo
+        setNicknameButton.addEventListener('click', () => {
+            const nickname = nicknameInput.value.trim();
+            if (nickname) {
+                socket.emit('set-nickname', nickname);
+            }
+        });
+
+        // Gérer la création de salon
+        createRoomButton.addEventListener('click', () => {
+            socket.emit('create-room', userNickname);
+        });
+
+        // Gérer la demande de rejoindre un salon avec un code
+        joinRoomButton.addEventListener('click', () => {
+            const roomCode = roomCodeInput.value.trim();
+            if (roomCode) {
+                socket.emit('join-room', { nickname: userNickname, roomCode });
+            }
+        });
+
+        // Gérer l'envoi de message
+        sendButton.addEventListener('click', () => {
+            const message = messageInput.value.trim();
+            if (message) {
+                socket.emit('message', { roomCode: currentRoomCode, user: userNickname, message });
+                messageInput.value = ''; // Efface le champ de saisie
+            }
+        });
+
+        // Réception du message du backend
+        socket.on('message', (data) => {
+            displayMessage(`${data.user}: ${data.message}`);
+        });
+
+        // Gestion de la réponse concernant le pseudo
+        socket.on('nickname-taken', () => {
+            errorMessage.style.display = 'block'; // Affiche un message d'erreur si le pseudo est déjà pris
+        });
+
+        socket.on('nickname-set', (nickname) => {
+            userNickname = nickname;
+            nicknameSection.style.display = 'none';
+            roomSection.style.display = 'block';
+        });
+
+        // Réception du code de salon lors de la création
+        socket.on('room-created', (roomCode) => {
+            currentRoomCode = roomCode;
+            createRoomCode.style.display = 'block';
+            roomCodeDisplay.textContent = roomCode;
+            roomSection.style.display = 'none';
+            chatBox.style.display = 'block';
+            messageInput.style.display = 'block';
+            sendButton.style.display = 'block';
+        });
+
+        // Si l'utilisateur rejoint un salon
+        socket.on('room-joined', (roomCode) => {
+            currentRoomCode = roomCode;
+            roomSection.style.display = 'none';
+            chatBox.style.display = 'block';
+            messageInput.style.display = 'block';
+            sendButton.style.display = 'block';
+        });
+    </script>
+
+</body>
+</html>
