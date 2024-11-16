@@ -1,16 +1,19 @@
 {
-  "name": "votre-projet",
+  "name": "chat-application",
   "version": "1.0.0",
+  "description": "Une application de chat avec des salons privés et des pseudos uniques.",
   "main": "server.js",
-  "dependencies": {
-    "express": "^4.17.1",
-    "socket.io": "^4.0.1",
-    "uuid": "^9.0.0"  // uuid sera listé ici
-  },
   "scripts": {
     "start": "node server.js"
   },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1",
+    "uuid": "^9.0.0"
+  },
   "engines": {
-    "node": "16.x"  // ou toute version compatible
-  }
+    "node": "16.x"
+  },
+  "author": "Votre Nom",
+  "license": "MIT"
 }
