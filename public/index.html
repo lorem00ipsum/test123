@@ -5,20 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Multi-utilisateurs</title>
     <style>
-           body {
-                        font-family: Arial, sans-serif;
-                        margin: 0;
-                        padding: 0;
-                        background-image: url('https://wallpaperaccess.com/full/10848.jpg');
-                        background-size: cover;
-                        background-attachment: fixed;
-                        color: #f5f5f5;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        min-height: 100vh;
-                        animation: backgroundAnimation 30s ease-in-out infinite;
-                    }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-image: url('https://wallpaperaccess.com/full/10848.jpg');
+            background-size: cover;
+            background-attachment: fixed;
+            color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            min-height: 100vh;
+            animation: backgroundAnimation 30s ease-in-out infinite;
+        }
         #chat-box {
             width: 100%;
             height: 400px;
@@ -49,13 +50,23 @@
             margin-top: 10px;
         }
     </style>
+    <!-- Firebase App (Core) SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+    <!-- Firebase Authentication -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js"></script>
 </head>
 <body>
 
     <h1>Chat Multi-utilisateurs</h1>
-    
+
+    <!-- Section pour l'authentification Google -->
+    <div id="auth-section">
+        <button id="google-signin-button">Se connecter avec Google</button>
+        <p id="auth-message" style="color: red; display: none;">Erreur d'authentification. Réessayez.</p>
+    </div>
+
     <!-- Section de choix du pseudo -->
-    <div id="nickname-section">
+    <div id="nickname-section" style="display: none;">
         <input type="text" id="nickname-input" placeholder="Choisissez votre pseudo" />
         <button id="set-nickname-button">Définir le pseudo</button>
         <p id="error-message" style="color: red; display: none;">Ce pseudo est déjà pris. Essayez un autre.</p>
@@ -74,100 +85,40 @@
     <button id="send-button" style="display: none;">Envoyer</button>
     <div id="create-room-code" style="display: none;">Code du salon: <span id="room-code"></span></div>
 
-    <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAB_a0jMgew93hEemNQ1WobFjxha5QY5V8",
+            authDomain: "webbb-5dd04.firebaseapp.com",
+            projectId: "webbb-5dd04",
+            storageBucket: "webbb-5dd04.appspot.com",
+            messagingSenderId: "403541030485",
+            appId: "1:403541030485:web:7a299cd4642a66c1b646dc"
+        };
 
-        const nicknameInput = document.getElementById('nickname-input');
-        const setNicknameButton = document.getElementById('set-nickname-button');
-        const errorMessage = document.getElementById('error-message');
-        const chatBox = document.getElementById('chat-box');
-        const messageInput = document.getElementById('message-input');
-        const sendButton = document.getElementById('send-button');
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // DOM elements
+        const googleSigninButton = document.getElementById('google-signin-button');
+        const authMessage = document.getElementById('auth-message');
         const nicknameSection = document.getElementById('nickname-section');
-        const roomSection = document.getElementById('room-section');
-        const createRoomButton = document.getElementById('create-room-button');
-        const roomCodeInput = document.getElementById('room-code-input');
-        const joinRoomButton = document.getElementById('join-room-button');
-        const createRoomCode = document.getElementById('create-room-code');
-        const roomCodeDisplay = document.getElementById('room-code');
-        
-        let userNickname = '';
-        let currentRoomCode = '';
 
-        // Fonction pour afficher les messages dans le chat
-        function displayMessage(message) {
-            const messageDiv = document.createElement('div');
-            messageDiv.classList.add('message');
-            messageDiv.textContent = message;
-            chatBox.appendChild(messageDiv);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-
-        // Gérer l'événement de clic pour définir un pseudo
-        setNicknameButton.addEventListener('click', () => {
-            const nickname = nicknameInput.value.trim();
-            if (nickname) {
-                socket.emit('set-nickname', nickname);
-            }
-        });
-
-        // Gérer la création de salon
-        createRoomButton.addEventListener('click', () => {
-            socket.emit('create-room', userNickname);
-        });
-
-        // Gérer la demande de rejoindre un salon avec un code
-        joinRoomButton.addEventListener('click', () => {
-            const roomCode = roomCodeInput.value.trim();
-            if (roomCode) {
-                socket.emit('join-room', { nickname: userNickname, roomCode });
-            }
-        });
-
-        // Gérer l'envoi de message
-        sendButton.addEventListener('click', () => {
-            const message = messageInput.value.trim();
-            if (message) {
-                socket.emit('message', { roomCode: currentRoomCode, user: userNickname, message });
-                messageInput.value = ''; // Efface le champ de saisie
-            }
-        });
-
-        // Réception du message du backend
-        socket.on('message', (data) => {
-            displayMessage(`${data.user}: ${data.message}`);
-        });
-
-        // Gestion de la réponse concernant le pseudo
-        socket.on('nickname-taken', () => {
-            errorMessage.style.display = 'block'; // Affiche un message d'erreur si le pseudo est déjà pris
-        });
-
-        socket.on('nickname-set', (nickname) => {
-            userNickname = nickname;
-            nicknameSection.style.display = 'none';
-            roomSection.style.display = 'block';
-        });
-
-        // Réception du code de salon lors de la création
-        socket.on('room-created', (roomCode) => {
-            currentRoomCode = roomCode;
-            createRoomCode.style.display = 'block';
-            roomCodeDisplay.textContent = roomCode;
-            roomSection.style.display = 'none';
-            chatBox.style.display = 'block';
-            messageInput.style.display = 'block';
-            sendButton.style.display = 'block';
-        });
-
-        // Si l'utilisateur rejoint un salon
-        socket.on('room-joined', (roomCode) => {
-            currentRoomCode = roomCode;
-            roomSection.style.display = 'none';
-            chatBox.style.display = 'block';
-            messageInput.style.display = 'block';
-            sendButton.style.display = 'block';
+        // Google Sign-In
+        googleSigninButton.addEventListener('click', () => {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider)
+                .then((result) => {
+                    const user = result.user;
+                    console.log(`Connecté : ${user.displayName}`);
+                    nicknameSection.style.display = 'block'; // Affiche la section pour définir un pseudo
+                    document.getElementById('auth-section').style.display = 'none'; // Masque la section d'authentification
+                })
+                .catch((error) => {
+                    console.error('Erreur lors de la connexion :', error);
+                    authMessage.style.display = 'block';
+                });
         });
     </script>
 
