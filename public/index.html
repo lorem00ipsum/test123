@@ -16,9 +16,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            flex-direction: column;
             min-height: 100vh;
-            animation: backgroundAnimation 30s ease-in-out infinite;
         }
         #chat-box {
             width: 100%;
@@ -50,23 +48,13 @@
             margin-top: 10px;
         }
     </style>
-    <!-- Firebase App (Core) SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
-    <!-- Firebase Authentication -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js"></script>
 </head>
 <body>
 
     <h1>Chat Multi-utilisateurs</h1>
-
-    <!-- Section pour l'authentification Google -->
-    <div id="auth-section">
-        <button id="google-signin-button">Se connecter avec Google</button>
-        <p id="auth-message" style="color: red; display: none;">Erreur d'authentification. Réessayez.</p>
-    </div>
-
+    
     <!-- Section de choix du pseudo -->
-    <div id="nickname-section" style="display: none;">
+    <div id="nickname-section">
         <input type="text" id="nickname-input" placeholder="Choisissez votre pseudo" />
         <button id="set-nickname-button">Définir le pseudo</button>
         <p id="error-message" style="color: red; display: none;">Ce pseudo est déjà pris. Essayez un autre.</p>
@@ -85,42 +73,97 @@
     <button id="send-button" style="display: none;">Envoyer</button>
     <div id="create-room-code" style="display: none;">Code du salon: <span id="room-code"></span></div>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.2/firebase-database.js"></script>
+
     <script>
-        // Firebase configuration
+        // Import Firebase
+        import { initializeApp } from "firebase/app";
+        import { getDatabase, ref, set, onValue } from "firebase/database";
+
+        // Votre configuration Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyAB_a0jMgew93hEemNQ1WobFjxha5QY5V8",
             authDomain: "webbb-5dd04.firebaseapp.com",
             projectId: "webbb-5dd04",
-            storageBucket: "webbb-5dd04.appspot.com",
+            storageBucket: "webbb-5dd04.firebasestorage.app",
             messagingSenderId: "403541030485",
             appId: "1:403541030485:web:7a299cd4642a66c1b646dc"
         };
 
-        // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
+        // Initialisation de Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
 
-        // DOM elements
-        const googleSigninButton = document.getElementById('google-signin-button');
-        const authMessage = document.getElementById('auth-message');
-        const nicknameSection = document.getElementById('nickname-section');
+        const nicknameInput = document.getElementById('nickname-input');
+        const setNicknameButton = document.getElementById('set-nickname-button');
+        const chatBox = document.getElementById('chat-box');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const roomCodeInput = document.getElementById('room-code-input');
+        const joinRoomButton = document.getElementById('join-room-button');
 
-        // Google Sign-In
-        googleSigninButton.addEventListener('click', () => {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider)
-                .then((result) => {
-                    const user = result.user;
-                    console.log(`Connecté : ${user.displayName}`);
-                    nicknameSection.style.display = 'block'; // Affiche la section pour définir un pseudo
-                    document.getElementById('auth-section').style.display = 'none'; // Masque la section d'authentification
-                })
-                .catch((error) => {
-                    console.error('Erreur lors de la connexion :', error);
-                    authMessage.style.display = 'block';
+        let userNickname = '';
+        let currentRoomCode = '';
+
+        // Fonction pour afficher un message dans le chat
+        function displayMessage(message) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+            messageDiv.textContent = message;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // Définir le pseudo
+        setNicknameButton.addEventListener('click', () => {
+            userNickname = nicknameInput.value.trim();
+            if (userNickname) {
+                alert(`Pseudo défini : ${userNickname}`);
+            }
+        });
+
+        // Créer un salon
+        createRoomButton.addEventListener('click', () => {
+            currentRoomCode = Math.random().toString(36).substring(2, 8); // Génération d'un code aléatoire
+            const roomRef = ref(db, `rooms/${currentRoomCode}`);
+            set(roomRef, {
+                users: [userNickname],
+                messages: []
+            });
+            alert(`Salon créé avec le code : ${currentRoomCode}`);
+        });
+
+        // Rejoindre un salon
+        joinRoomButton.addEventListener('click', () => {
+            const roomCode = roomCodeInput.value.trim();
+            if (roomCode) {
+                const roomRef = ref(db, `rooms/${roomCode}`);
+                onValue(roomRef, (snapshot) => {
+                    if (snapshot.exists()) {
+                        currentRoomCode = roomCode;
+                        displayMessage(`Vous avez rejoint le salon ${roomCode}`);
+                    } else {
+                        alert('Salon introuvable.');
+                    }
                 });
+            }
+        });
+
+        // Envoyer un message
+        sendButton.addEventListener('click', () => {
+            const message = messageInput.value.trim();
+            if (message && currentRoomCode) {
+                const messagesRef = ref(db, `rooms/${currentRoomCode}/messages`);
+                set(messagesRef, {
+                    user: userNickname,
+                    message: message
+                });
+                displayMessage(`${userNickname}: ${message}`);
+                messageInput.value = '';
+            }
         });
     </script>
-
 </body>
 </html>
