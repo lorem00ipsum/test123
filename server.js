@@ -38,7 +38,7 @@ io.on('connection', (socket) => {
         } else {
             users[socket.id] = nickname;
             socket.emit('nickname-set', nickname);
-            console.log(L'utilisateur ${nickname} est connecté);
+            console.log(`L'utilisateur ${nickname} est connecté`);
         }
     });
 
