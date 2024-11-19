@@ -1,7 +1,17 @@
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
-const { v4: uuidv4 } = require('uuid'); // Pour générer des codes uniques pour les salons
+
+// Fonction pour générer un code de salon court (par exemple, une chaîne de 6 caractères)
+function generateRoomCode(length = 6) {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let code = '';
+    for (let i = 0; i < length; i++) {
+        const randomIndex = Math.floor(Math.random() * characters.length);
+        code += characters[randomIndex];
+    }
+    return code;
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -34,7 +44,7 @@ io.on('connection', (socket) => {
 
     // Créer un salon
     socket.on('create-room', (nickname) => {
-        const roomCode = uuidv4(); // Générer un code unique pour le salon
+        const roomCode = generateRoomCode(); // Générer un code court pour le salon
         rooms[roomCode] = { users: [socket.id] }; // Ajouter l'utilisateur au salon
         socket.join(roomCode);
         socket.emit('room-created', roomCode);
