@@ -5,26 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Multi-utilisateurs</title>
     <style>
-        /* Styles de base */
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-image: url('https://wallpaperaccess.com/full/10848.jpg');
-            background-size: cover;
-            background-attachment: fixed;
-            color: #f5f5f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        h1 {
-            text-align: center;
-            animation: fadeIn 2s ease;
-        }
-
+           body {
+                        font-family: Arial, sans-serif;
+                        margin: 0;
+                        padding: 0;
+                        background-image: url('https://wallpaperaccess.com/full/10848.jpg');
+                        background-size: cover;
+                        background-attachment: fixed;
+                        color: #f5f5f5;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: 100vh;
+                        animation: backgroundAnimation 30s ease-in-out infinite;
+                    }
         #chat-box {
             width: 100%;
             height: 400px;
@@ -32,70 +26,27 @@
             padding: 10px;
             overflow-y: auto;
             background-color: #238636;
-            border-radius: 10px;
-            animation: slideIn 1.5s ease;
         }
-
         #message-input {
             width: calc(100% - 90px);
             padding: 10px;
-            border: none;
-            border-radius: 5px;
         }
-
-        #send-button,
-        #call-button {
+        #send-button {
             padding: 10px;
             cursor: pointer;
-            border: none;
-            border-radius: 5px;
-            background-color: #eb4336;
-            color: #fff;
-            transition: transform 0.3s, background-color 0.3s;
         }
-
-        #send-button:hover,
-        #call-button:hover {
-            background-color: #f56b5c;
-            transform: scale(1.1);
-        }
-
         .message {
             margin-bottom: 10px;
             padding: 5px;
             background-color: #eb4336;
             border-radius: 5px;
         }
-
         #nickname-section, #room-section {
             text-align: center;
             margin-top: 20px;
-            animation: fadeIn 2s ease;
         }
-
         #create-room-code {
             margin-top: 10px;
-        }
-
-        /* Animations */
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-            to {
-                opacity: 1;
-            }
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateY(-50px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
         }
     </style>
 </head>
@@ -121,14 +72,7 @@
     <div id="chat-box" style="display: none;"></div>
     <input type="text" id="message-input" placeholder="Écrivez un message..." style="display: none;" />
     <button id="send-button" style="display: none;">Envoyer</button>
-    <button id="call-button" style="display: none;">Lancer un appel</button>
     <div id="create-room-code" style="display: none;">Code du salon: <span id="room-code"></span></div>
-
-    <!-- Section vidéo pour les appels -->
-    <div id="video-container" style="display: none;">
-        <video id="local-video" autoplay muted></video>
-        <video id="remote-video" autoplay></video>
-    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -140,7 +84,6 @@
         const chatBox = document.getElementById('chat-box');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
-        const callButton = document.getElementById('call-button');
         const nicknameSection = document.getElementById('nickname-section');
         const roomSection = document.getElementById('room-section');
         const createRoomButton = document.getElementById('create-room-button');
@@ -148,19 +91,9 @@
         const joinRoomButton = document.getElementById('join-room-button');
         const createRoomCode = document.getElementById('create-room-code');
         const roomCodeDisplay = document.getElementById('room-code');
-        const videoContainer = document.getElementById('video-container');
-        const localVideo = document.getElementById('local-video');
-        const remoteVideo = document.getElementById('remote-video');
         
         let userNickname = '';
         let currentRoomCode = '';
-        let localStream;
-        let peerConnection;
-        const config = {
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' }
-            ]
-        };
 
         // Fonction pour afficher les messages dans le chat
         function displayMessage(message) {
@@ -171,33 +104,72 @@
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // Fonction pour démarrer un appel
-        async function startCall() {
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                localVideo.srcObject = localStream;
-                videoContainer.style.display = 'block';
-
-                peerConnection = new RTCPeerConnection(config);
-                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-                peerConnection.ontrack = event => {
-                    remoteVideo.srcObject = event.streams[0];
-                };
-
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-
-                socket.emit('call-offer', { roomCode: currentRoomCode, offer });
-            } catch (error) {
-                console.error('Erreur lors du démarrage de l\'appel :', error);
+        // Gérer l'événement de clic pour définir un pseudo
+        setNicknameButton.addEventListener('click', () => {
+            const nickname = nicknameInput.value.trim();
+            if (nickname) {
+                socket.emit('set-nickname', nickname);
             }
-        }
+        });
 
-        // Gestion des événements
-        callButton.addEventListener('click', startCall);
+        // Gérer la création de salon
+        createRoomButton.addEventListener('click', () => {
+            socket.emit('create-room', userNickname);
+        });
 
-        // Autres fonctionnalités...
+        // Gérer la demande de rejoindre un salon avec un code
+        joinRoomButton.addEventListener('click', () => {
+            const roomCode = roomCodeInput.value.trim();
+            if (roomCode) {
+                socket.emit('join-room', { nickname: userNickname, roomCode });
+            }
+        });
+
+        // Gérer l'envoi de message
+        sendButton.addEventListener('click', () => {
+            const message = messageInput.value.trim();
+            if (message) {
+                socket.emit('message', { roomCode: currentRoomCode, user: userNickname, message });
+                messageInput.value = ''; // Efface le champ de saisie
+            }
+        });
+
+        // Réception du message du backend
+        socket.on('message', (data) => {
+            displayMessage(`${data.user}: ${data.message}`);
+        });
+
+        // Gestion de la réponse concernant le pseudo
+        socket.on('nickname-taken', () => {
+            errorMessage.style.display = 'block'; // Affiche un message d'erreur si le pseudo est déjà pris
+        });
+
+        socket.on('nickname-set', (nickname) => {
+            userNickname = nickname;
+            nicknameSection.style.display = 'none';
+            roomSection.style.display = 'block';
+        });
+
+        // Réception du code de salon lors de la création
+        socket.on('room-created', (roomCode) => {
+            currentRoomCode = roomCode;
+            createRoomCode.style.display = 'block';
+            roomCodeDisplay.textContent = roomCode;
+            roomSection.style.display = 'none';
+            chatBox.style.display = 'block';
+            messageInput.style.display = 'block';
+            sendButton.style.display = 'block';
+        });
+
+        // Si l'utilisateur rejoint un salon
+        socket.on('room-joined', (roomCode) => {
+            currentRoomCode = roomCode;
+            roomSection.style.display = 'none';
+            chatBox.style.display = 'block';
+            messageInput.style.display = 'block';
+            sendButton.style.display = 'block';
+        });
     </script>
+
 </body>
 </html>
