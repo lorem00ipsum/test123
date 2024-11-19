@@ -38,7 +38,7 @@ io.on('connection', (socket) => {
         } else {
             users[socket.id] = nickname;
             socket.emit('nickname-set', nickname);
-            console.log(`L'utilisateur ${nickname} est connecté`);
+            console.log(L'utilisateur ${nickname} est connecté);
         }
     });
 
@@ -66,19 +66,6 @@ io.on('connection', (socket) => {
         io.to(data.roomCode).emit('message', data); // Diffuser le message à tous les utilisateurs du salon
     });
 
-    // Gérer l'appel vidéo et audio
-    socket.on('initiate-call', (roomCode) => {
-        io.to(roomCode).emit('incoming-call', socket.id); // Envoi de l'appel aux autres utilisateurs du salon
-    });
-
-    socket.on('accept-call', (roomCode, callerId) => {
-        io.to(callerId).emit('call-accepted', socket.id); // Notifie l'appelant que l'appel a été accepté
-    });
-
-    socket.on('end-call', (roomCode) => {
-        io.to(roomCode).emit('call-ended'); // Met fin à l'appel pour tous les utilisateurs dans le salon
-    });
-
     // Gérer la déconnexion
     socket.on('disconnect', () => {
         const nickname = users[socket.id];
@@ -97,5 +84,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Serveur en ligne sur http://localhost:${PORT}`);
-});
+    console.log(Serveur en ligne sur http://localhost:${PORT});
+}); 
