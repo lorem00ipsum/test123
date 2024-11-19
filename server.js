@@ -14,7 +14,7 @@ const io = socketIo(server, {
 
 // Stockage des utilisateurs et des salons
 let users = {}; // Utilisateurs avec leurs pseudos
-let rooms = {}; // Salon avec codes
+let rooms = {}; // Salons avec leurs utilisateurs
 
 app.use(express.static('public'));
 
@@ -51,9 +51,22 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Gérer l'envoi des messages
+    // Gérer les messages texte
     socket.on('message', (data) => {
         io.to(data.roomCode).emit('message', data); // Diffuser le message à tous les utilisateurs du salon
+    });
+
+    // Gérer la signalisation WebRTC pour les appels vidéo
+    socket.on('offer', ({ offer, roomCode }) => {
+        socket.to(roomCode).emit('offer', { offer, sender: socket.id });
+    });
+
+    socket.on('answer', ({ answer, roomCode }) => {
+        socket.to(roomCode).emit('answer', { answer, sender: socket.id });
+    });
+
+    socket.on('ice-candidate', ({ candidate, roomCode }) => {
+        socket.to(roomCode).emit('ice-candidate', { candidate, sender: socket.id });
     });
 
     // Gérer la déconnexion
