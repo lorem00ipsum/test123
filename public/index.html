@@ -5,20 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Multi-utilisateurs</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-image: url('https://wallpaperaccess.com/full/10848.jpg');
-            background-size: cover;
-            background-attachment: fixed;
-            color: #f5f5f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            animation: backgroundAnimation 30s ease-in-out infinite;
-        }
+           body {
+                        font-family: Arial, sans-serif;
+                        margin: 0;
+                        padding: 0;
+                        background-image: url('https://wallpaperaccess.com/full/10848.jpg');
+                        background-size: cover;
+                        background-attachment: fixed;
+                        color: #f5f5f5;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: 100vh;
+                        animation: backgroundAnimation 30s ease-in-out infinite;
+                    }
         #chat-box {
             width: 100%;
             height: 400px;
@@ -48,54 +48,6 @@
         #create-room-code {
             margin-top: 10px;
         }
-
-        /* Animation et styles pour l'appel vidéo */
-        #call-section {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 20px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            animation: slideIn 0.5s ease-out;
-        }
-
-        video {
-            width: 150px;
-            height: 150px;
-            border-radius: 10px;
-            margin: 5px;
-            background-color: #000;
-        }
-
-        @keyframes slideIn {
-            0% {
-                transform: translateY(50px);
-                opacity: 0;
-            }
-            100% {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
-        #call-section button {
-            background-color: #238636;
-            color: white;
-            padding: 10px;
-            border: none;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: background-color 0.3s ease;
-        }
-
-        #call-section button:hover {
-            background-color: #34a853;
-        }
-
     </style>
 </head>
 <body>
@@ -122,14 +74,6 @@
     <button id="send-button" style="display: none;">Envoyer</button>
     <div id="create-room-code" style="display: none;">Code du salon: <span id="room-code"></span></div>
 
-    <!-- Section pour l'appel vidéo -->
-    <div id="call-section" style="display: none;">
-        <button id="start-call-button">Démarrer un appel</button>
-        <button id="end-call-button" style="display: none;">Mettre fin à l'appel</button>
-        <video id="local-video" autoplay muted></video>
-        <video id="remote-video" autoplay></video>
-    </div>
-
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
@@ -146,156 +90,86 @@
         const roomCodeInput = document.getElementById('room-code-input');
         const joinRoomButton = document.getElementById('join-room-button');
         const createRoomCode = document.getElementById('create-room-code');
-        const roomCodeSpan = document.getElementById('room-code');
-        const startCallButton = document.getElementById('start-call-button');
-        const endCallButton = document.getElementById('end-call-button');
-        const localVideo = document.getElementById('local-video');
-        const remoteVideo = document.getElementById('remote-video');
-        const callSection = document.getElementById('call-section');
+        const roomCodeDisplay = document.getElementById('room-code');
+        
+        let userNickname = '';
+        let currentRoomCode = '';
 
-        let nickname;
-        let currentRoomCode;
-        let localStream;
-        let peerConnection;
-        let remoteStream;
-
-        // Définir un pseudo
-        setNicknameButton.addEventListener('click', () => {
-            nickname = nicknameInput.value;
-            socket.emit('set-nickname', nickname);
-
-            socket.on('nickname-set', (nickname) => {
-                nicknameSection.style.display = 'none';
-                roomSection.style.display = 'block';
-            });
-
-            socket.on('nickname-taken', () => {
-                errorMessage.style.display = 'block';
-            });
-        });
-
-        // Créer un salon
-        createRoomButton.addEventListener('click', () => {
-            socket.emit('create-room', nickname);
-            socket.on('room-created', (roomCode) => {
-                currentRoomCode = roomCode;
-                roomCodeSpan.textContent = roomCode;
-                createRoomCode.style.display = 'block';
-            });
-        });
-
-        // Rejoindre un salon
-        joinRoomButton.addEventListener('click', () => {
-            const roomCode = roomCodeInput.value;
-            socket.emit('join-room', { nickname, roomCode });
-            socket.on('room-joined', (roomCode) => {
-                currentRoomCode = roomCode;
-                chatBox.style.display = 'block';
-                messageInput.style.display = 'block';
-                sendButton.style.display = 'block';
-            });
-
-            socket.on('error', (errorMessage) => {
-                alert(errorMessage);
-            });
-        });
-
-        // Envoyer un message
-        sendButton.addEventListener('click', () => {
-            const message = messageInput.value;
-            socket.emit('message', { roomCode: currentRoomCode, message });
-            messageInput.value = '';
-        });
-
-        socket.on('message', (data) => {
+        // Fonction pour afficher les messages dans le chat
+        function displayMessage(message) {
             const messageDiv = document.createElement('div');
-            messageDiv.textContent = `${data.nickname}: ${data.message}`;
             messageDiv.classList.add('message');
+            messageDiv.textContent = message;
             chatBox.appendChild(messageDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
-        });
-
-        // Gérer les appels vidéo et audio
-        startCallButton.addEventListener('click', () => {
-            socket.emit('initiate-call', currentRoomCode);
-            callSection.style.display = 'flex';
-            startCallButton.style.display = 'none';
-            endCallButton.style.display = 'block';
-            startVideoCall();
-        });
-
-        // Commencer un appel vidéo
-        async function startVideoCall() {
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({
-                    video: true,
-                    audio: true
-                });
-                localVideo.srcObject = localStream;
-
-                // Créer une connexion WebRTC
-                peerConnection = new RTCPeerConnection();
-
-                // Ajouter la vidéo locale à la connexion
-                localStream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, localStream);
-                });
-
-                // Gérer le flux distant
-                peerConnection.ontrack = (event) => {
-                    remoteStream = event.streams[0];
-                    remoteVideo.srcObject = remoteStream;
-                };
-
-                // Créer une offre de connexion
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-                socket.emit('video-offer', currentRoomCode, offer); // Envoyer l'offre à l'autre utilisateur
-
-            } catch (error) {
-                console.error('Erreur lors de la capture de la vidéo :', error);
-            }
         }
 
-        // Réception de l'offre de l'autre utilisateur
-        socket.on('video-offer', async (offer, roomCode) => {
+        // Gérer l'événement de clic pour définir un pseudo
+        setNicknameButton.addEventListener('click', () => {
+            const nickname = nicknameInput.value.trim();
+            if (nickname) {
+                socket.emit('set-nickname', nickname);
+            }
+        });
+
+        // Gérer la création de salon
+        createRoomButton.addEventListener('click', () => {
+            socket.emit('create-room', userNickname);
+        });
+
+        // Gérer la demande de rejoindre un salon avec un code
+        joinRoomButton.addEventListener('click', () => {
+            const roomCode = roomCodeInput.value.trim();
+            if (roomCode) {
+                socket.emit('join-room', { nickname: userNickname, roomCode });
+            }
+        });
+
+        // Gérer l'envoi de message
+        sendButton.addEventListener('click', () => {
+            const message = messageInput.value.trim();
+            if (message) {
+                socket.emit('message', { roomCode: currentRoomCode, user: userNickname, message });
+                messageInput.value = ''; // Efface le champ de saisie
+            }
+        });
+
+        // Réception du message du backend
+        socket.on('message', (data) => {
+            displayMessage(${data.user}: ${data.message});
+        });
+
+        // Gestion de la réponse concernant le pseudo
+        socket.on('nickname-taken', () => {
+            errorMessage.style.display = 'block'; // Affiche un message d'erreur si le pseudo est déjà pris
+        });
+
+        socket.on('nickname-set', (nickname) => {
+            userNickname = nickname;
+            nicknameSection.style.display = 'none';
+            roomSection.style.display = 'block';
+        });
+
+        // Réception du code de salon lors de la création
+        socket.on('room-created', (roomCode) => {
             currentRoomCode = roomCode;
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-
-            // Créer une réponse (answer)
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
-            socket.emit('video-answer', roomCode, answer); // Envoyer la réponse à l'appelant
+            createRoomCode.style.display = 'block';
+            roomCodeDisplay.textContent = roomCode;
+            roomSection.style.display = 'none';
+            chatBox.style.display = 'block';
+            messageInput.style.display = 'block';
+            sendButton.style.display = 'block';
         });
 
-        // Réception de la réponse de l'appelant
-        socket.on('video-answer', (answer, roomCode) => {
-            peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+        // Si l'utilisateur rejoint un salon
+        socket.on('room-joined', (roomCode) => {
+            currentRoomCode = roomCode;
+            roomSection.style.display = 'none';
+            chatBox.style.display = 'block';
+            messageInput.style.display = 'block';
+            sendButton.style.display = 'block';
         });
-
-        // Gérer la fin de l'appel
-        endCallButton.addEventListener('click', () => {
-            socket.emit('end-call', currentRoomCode);
-            endCall();
-        });
-
-        socket.on('call-ended', () => {
-            endCall();
-        });
-
-        // Fonction pour mettre fin à l'appel
-        function endCall() {
-            if (peerConnection) {
-                peerConnection.close();
-                peerConnection = null;
-            }
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-            }
-            callSection.style.display = 'none';
-            startCallButton.style.display = 'block';
-            endCallButton.style.display = 'none';
-        }
     </script>
+
 </body>
 </html>
