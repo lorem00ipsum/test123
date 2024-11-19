@@ -1,10 +1,10 @@
-const express = require('express');
+const express = require('express'); 
 const http = require('http');
 const socketIo = require('socket.io');
 
 // Fonction pour générer un code de salon court (par exemple, une chaîne de 6 caractères)
 function generateRoomCode(length = 6) {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'; 
     let code = '';
     for (let i = 0; i < length; i++) {
         const randomIndex = Math.floor(Math.random() * characters.length);
@@ -64,6 +64,19 @@ io.on('connection', (socket) => {
     // Gérer l'envoi des messages
     socket.on('message', (data) => {
         io.to(data.roomCode).emit('message', data); // Diffuser le message à tous les utilisateurs du salon
+    });
+
+    // Gérer l'appel vidéo et audio
+    socket.on('initiate-call', (roomCode) => {
+        io.to(roomCode).emit('incoming-call', socket.id); // Envoi de l'appel aux autres utilisateurs du salon
+    });
+
+    socket.on('accept-call', (roomCode, callerId) => {
+        io.to(callerId).emit('call-accepted', socket.id); // Notifie l'appelant que l'appel a été accepté
+    });
+
+    socket.on('end-call', (roomCode) => {
+        io.to(roomCode).emit('call-ended'); // Met fin à l'appel pour tous les utilisateurs dans le salon
     });
 
     // Gérer la déconnexion
